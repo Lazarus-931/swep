@@ -7,7 +7,7 @@ Swep makes a internal script that runs and reports everthing about your chip, al
 
 Note, for this to work, make sure you:
 
-- have macOS 14+ with Xcode installed (needs `xcodebuild`)
+- have macOS 14+ with Command Line Tools installed (`xcode-select --install`)
 - any Apple Silicon Mac (M1, M2...)
 
 
@@ -20,7 +20,7 @@ To get started, simply
 
 ```bash
 git clone https://github.com/Lazarus-931/swep.git && cd swep
-xcodebuild -project GPUProbe.xcodeproj -scheme GPUProbe -configuration Release build
-$(xcodebuild -project GPUProbe.xcodeproj -scheme GPUProbe -configuration Release -showBuildSettings 2>/dev/null | grep -m1 BUILT_PRODUCTS_DIR | awk '{print $3}')/GPUProbe
+make run
 ```
 
+Results print to stdout and a report is saved to `runs/<chip>.md` based on your device.
