@@ -1807,157 +1807,159 @@ static void buildMarkdownReport() {
     md("# Apple %s GPU — Measured Properties\n\n", chip.c_str());
     md("All numbers from real probe runs on this device.\n\n");
 
-    md("## Basics\n");
+    md("## Device Info\n");
     md("- **Device:** %s, %s memory\n", R.deviceName, R.unifiedMemory ? "unified" : "discrete");
-    md("- **SIMD width:** %lu threads\n", R.simdWidth);
+    md("- **Threads per SIMD group:** %lu\n", R.simdWidth);
     md("- **Max threadgroup size:** %lu threads\n", R.maxTGThreads);
-    md("- **Max threadgroup memory:** %lu KB\n", R.maxTGMem / 1024);
-    md("- **Max buffer length:** %lu MB\n", R.maxBufMB);
+    md("- **Max shared memory per threadgroup:** %lu KB\n", R.maxTGMem / 1024);
+    md("- **Max buffer size:** %lu MB\n", R.maxBufMB);
     md("- **Recommended working set:** %llu MB\n", R.workingSetMB);
-    md("- **Dispatch overhead:** ~%.1f us\n", R.dispatchOverhead_us);
-    md("- **GPU timer resolution:** ~%.1f us minimum measurable dispatch\n\n", R.timerMinUs);
+    md("- **Kernel launch overhead:** ~%.1f us\n", R.dispatchOverhead_us);
+    md("- **Smallest measurable GPU time:** ~%.1f us\n\n", R.timerMinUs);
 
     md("## Memory Bandwidth\n");
-    md("- **DRAM bandwidth:** ~%.0f GB/s\n", R.dramBW_GBs);
-    md("- **Threadgroup memory bandwidth:** ~%.0f GB/s aggregate\n", R.tgmemBW_GBs);
-    md("- **Texture read bandwidth:** ~%.0f GB/s\n", R.textureBW_GBs);
-    md("- **Buffer read bandwidth:** ~%.0f GB/s\n\n", R.bufferBW_GBs);
+    md("- **Main memory (DRAM):** ~%.0f GB/s\n", R.dramBW_GBs);
+    md("- **Shared memory (threadgroup):** ~%.0f GB/s aggregate\n", R.tgmemBW_GBs);
+    md("- **Texture reads:** ~%.0f GB/s\n", R.textureBW_GBs);
+    md("- **Buffer reads:** ~%.0f GB/s\n\n", R.bufferBW_GBs);
 
     md("## Cache Hierarchy\n");
+    md("Load latency at each working set size:\n\n");
     for (auto& pt : R.cacheLatency)
         md("- **%u KB:** ~%.0f ns\n", pt.kb, pt.latNs);
-    md("- **SLC associativity:** %d-way\n", R.slcAssociativity);
-    md("- **TG memory bank count:** %d\n\n", R.bankCount);
+    md("- **System-level cache associativity:** %d-way\n", R.slcAssociativity);
+    md("- **Shared memory bank count:** %d\n\n", R.bankCount);
 
-    md("## Coalescing\n");
-    md("- **Stride 1 (coalesced):** ~%.0f GB/s\n", R.coalescedBW_GBs);
-    md("- **Stride 16 (non-coalesced):** ~%.0f GB/s\n", R.stride16BW_GBs);
+    md("## Memory Access Patterns\n");
+    md("- **Sequential (coalesced) reads:** ~%.0f GB/s\n", R.coalescedBW_GBs);
+    md("- **Strided (non-coalesced, stride 16) reads:** ~%.0f GB/s\n", R.stride16BW_GBs);
     if (R.stride16BW_GBs > 0)
-        md("- ~%.1fx penalty for non-coalesced access\n\n", R.coalescedBW_GBs / R.stride16BW_GBs);
+        md("- ~%.1fx penalty for scattered access\n\n", R.coalescedBW_GBs / R.stride16BW_GBs);
     else
         md("\n");
 
     md("## Compute Throughput\n");
-    md("- **FP32 ALU:** ~%.0f GFLOPS\n", R.fp32_GFLOPS);
-    md("- **FP16 ALU:** ~%.0f GFLOPS", R.fp16_GFLOPS);
+    md("- **32-bit float:** ~%.0f GFLOPS\n", R.fp32_GFLOPS);
+    md("- **16-bit float:** ~%.0f GFLOPS", R.fp16_GFLOPS);
     if (R.fp32_GFLOPS > 0) {
         double ratio = R.fp16_GFLOPS / R.fp32_GFLOPS;
-        if (ratio > 1.5) md(" (%.1fx faster than FP32 — packed execution)\n", ratio);
-        else md(" (same as FP32 — no packed fp16)\n");
+        if (ratio > 1.5) md(" (%.1fx faster — hardware packs two fp16 ops per cycle)\n", ratio);
+        else md(" (same speed as 32-bit — no packed fp16 execution)\n");
     } else md("\n");
-    md("- **INT32 ALU:** ~%.0f GIOPS", R.int32_GIOPS);
-    if (R.fp32_GFLOPS > 0) md(" (~%.1fx slower than FP32)\n", R.fp32_GFLOPS / R.int32_GIOPS);
+    md("- **32-bit integer:** ~%.0f billion ops/s", R.int32_GIOPS);
+    if (R.fp32_GFLOPS > 0) md(" (~%.1fx slower than float)\n", R.fp32_GFLOPS / R.int32_GIOPS);
     else md("\n");
-    md("- **Shader cores:** ~%d (inferred from saturation sweep)\n\n", R.inferredCores);
+    md("- **Shader core count:** ~%d (inferred from throughput saturation)\n\n", R.inferredCores);
 
-    md("## SIMD Operations\n");
-    md("- **SIMD shuffle:** ~%.0f Gshuffles/s, ~%.0f GB/s effective\n", R.shuffleRate_Gps, R.shuffleBW_GBs);
-    md("- **SIMD reduction (simd_sum):** ~%.0f Greductions/s\n\n", R.simdSumRate_Gps);
+    md("## Cross-Thread Communication\n");
+    md("- **SIMD shuffle (lane swap):** ~%.0f billion/s, ~%.0f GB/s effective\n", R.shuffleRate_Gps, R.shuffleBW_GBs);
+    md("- **SIMD reduction (sum across lanes):** ~%.0f billion/s\n\n", R.simdSumRate_Gps);
 
-    md("## Atomics\n");
-    md("- **Uncontested:** ~%.1f Gatomics/s\n", R.atomicUncontested_Gps);
-    md("- **Full contention (1 counter):** ~%.1f Gatomics/s\n", R.atomicContested_Gps);
+    md("## Atomic Operations\n");
+    md("- **No contention (many counters):** ~%.1f billion ops/s\n", R.atomicUncontested_Gps);
+    md("- **Full contention (single counter):** ~%.1f billion ops/s\n", R.atomicContested_Gps);
     if (R.atomicContested_Gps > 0)
-        md("- Contention penalty: ~%.0fx\n\n", R.atomicUncontested_Gps / R.atomicContested_Gps);
+        md("- Contention penalty: ~%.0fx slowdown\n\n", R.atomicUncontested_Gps / R.atomicContested_Gps);
     else
         md("\n");
 
-    md("## Synchronization\n");
-    md("- **Barrier cost (32-thread TG):** ~%.0f ns\n", R.barrierCost32_ns);
-    md("- **Barrier cost (1024-thread TG):** ~%.0f ns\n", R.barrierCost1024_ns);
-    md("- **TG memory RAW latency (1 thread):** ~%.0f ns per store-barrier-load cycle\n", R.tgmemRAW_1thread_ns);
-    md("- **TG memory RAW latency (256 threads):** ~%.0f ns\n\n", R.tgmemRAW_256thread_ns);
+    md("## Synchronization Costs\n");
+    md("- **Barrier cost (32 threads):** ~%.0f ns\n", R.barrierCost32_ns);
+    md("- **Barrier cost (1024 threads):** ~%.0f ns\n", R.barrierCost1024_ns);
+    md("- **Shared memory write-then-read latency (1 thread):** ~%.0f ns\n", R.tgmemRAW_1thread_ns);
+    md("- **Shared memory write-then-read latency (256 threads):** ~%.0f ns\n\n", R.tgmemRAW_256thread_ns);
 
     md("## Register File\n");
-    md("- **Spill boundary:** between %d and %d simdgroup_float8x8 accumulators\n\n",
-       R.spillBoundaryLow, R.spillBoundaryHigh);
+    md("- **Spill boundary:** between %d and %d matrix accumulators (8x8 float tiles)\n", R.spillBoundaryLow, R.spillBoundaryHigh);
+    md("- Beyond this, the compiler spills to memory and performance collapses.\n\n");
 
-    md("## Pipeline\n");
-    md("- **FMA throughput (independent):** ~%.0f GFLOPS\n", R.fmaIndep_GFLOPS);
-    md("- **FMA latency (dependent chain):** ~%.0f GFLOPS\n", R.fmaDep1_GFLOPS);
+    md("## Execution Pipeline\n");
+    md("- **Peak throughput (independent ops):** ~%.0f GFLOPS\n", R.fmaIndep_GFLOPS);
+    md("- **Latency-limited (dependent chain):** ~%.0f GFLOPS\n", R.fmaDep1_GFLOPS);
     if (R.fmaDep1_GFLOPS > 0) {
         double ratio = R.fmaIndep_GFLOPS / R.fmaDep1_GFLOPS;
-        md("- Ratio ~%.1fx suggests ~%d-cycle FMA pipeline\n\n", ratio, (int)round(ratio));
+        md("- Need ~%d independent operations in flight to fully utilize the pipeline\n\n", (int)round(ratio));
     } else md("\n");
 
     md("## Instruction Cache\n");
-    md("- **Small kernel (4 FMA/iter):** ~%.0f GFLOPS\n", R.icacheSmall_GFLOPS);
-    md("- **Medium kernel (32 FMA/iter):** ~%.0f GFLOPS\n", R.icacheMedium_GFLOPS);
-    md("- **Large kernel (64 FMA/iter):** ~%.0f GFLOPS\n", R.icacheLarge_GFLOPS);
+    md("- **Small kernel (4 ops/loop):** ~%.0f GFLOPS\n", R.icacheSmall_GFLOPS);
+    md("- **Medium kernel (32 ops/loop):** ~%.0f GFLOPS\n", R.icacheMedium_GFLOPS);
+    md("- **Large kernel (64 ops/loop):** ~%.0f GFLOPS\n", R.icacheLarge_GFLOPS);
     if (R.icacheMedium_GFLOPS > 0 && R.icacheLarge_GFLOPS < R.icacheMedium_GFLOPS * 0.95)
-        md("- Large variant shows ~%.0f%% drop — icache pressure\n\n",
+        md("- Large kernel drops ~%.0f%% — instruction cache can't hold the full loop body\n\n",
            (1.0 - R.icacheLarge_GFLOPS / R.icacheMedium_GFLOPS) * 100);
     else
         md("\n");
 
-    md("## TLB\n");
+    md("## Address Translation (TLB)\n");
+    md("Latency per load when touching N distinct memory pages (16 KB each):\n\n");
     for (auto& pt : R.tlbLatency)
         md("- **%u pages:** ~%.0f ns\n", pt.pages, pt.latNs);
     md("\n");
 
-    md("## MMA (simdgroup_multiply_accumulate)\n");
-    md("- **Latency (dependent):** ~%.1f ns/MMA\n", R.mmaLatency_ns);
-    md("- **Throughput (4 independent):** ~%.1f ns/MMA\n", R.mmaThroughput_ns);
+    md("## Matrix Multiply Unit\n");
+    md("- **Single dependent multiply-accumulate:** ~%.1f ns each\n", R.mmaLatency_ns);
+    md("- **Four independent multiply-accumulates:** ~%.1f ns each\n", R.mmaThroughput_ns);
     if (R.mmaThroughput_ns > 0) {
         double ratio = R.mmaLatency_ns / R.mmaThroughput_ns;
-        md("- ~%.1fx speedup with independent accumulators\n\n", ratio);
+        md("- ~%.1fx speedup when the GPU can overlap independent matrix ops\n\n", ratio);
     } else md("\n");
 
-    md("## Dispatch\n");
-    md("- **Direct dispatch:** ~%.1f us\n", R.directDispatch_us);
-    md("- **Indirect dispatch:** ~%.1f us\n", R.indirectDispatch_us);
-    md("- **Indirect overhead:** ~%.1f us\n\n", R.indirectDispatch_us - R.directDispatch_us);
+    md("## Kernel Launch Overhead\n");
+    md("- **Direct launch:** ~%.1f us\n", R.directDispatch_us);
+    md("- **Indirect launch (grid size from GPU buffer):** ~%.1f us\n", R.indirectDispatch_us);
+    md("- **Indirect overhead:** ~%.1f us extra\n\n", R.indirectDispatch_us - R.directDispatch_us);
 
-    md("## Readback Latency\n");
-    md("| Size | GPU | Readback | Total |\n");
-    md("|------|-----|----------|-------|\n");
+    md("## GPU-to-CPU Readback\n");
+    md("| Size | GPU Time | Readback Time | Total |\n");
+    md("|------|----------|---------------|-------|\n");
     for (auto& pt : R.readback)
         md("| %u KB | %.0f us | %.0f us | %.0f us |\n", pt.kb, pt.gpuUs, pt.readbackUs, pt.gpuUs + pt.readbackUs);
     md("\n");
 
-    md("## Concurrent Execution\n");
+    md("## Concurrent Kernel Execution\n");
     md("- **Kernel A alone:** %.3f ms\n", R.concA_ms);
     md("- **Kernel B alone:** %.3f ms\n", R.concB_ms);
-    md("- **Both together:** %.3f ms\n", R.concBoth_ms);
+    md("- **Both in same command buffer:** %.3f ms\n", R.concBoth_ms);
     double serial = R.concA_ms + R.concB_ms;
     double overlap = (serial > 0) ? (1.0 - R.concBoth_ms / serial) * 100 : 0;
     md("- **Overlap:** %.0f%%\n", overlap);
-    if (overlap > 5) md("- GPU runs independent kernels concurrently across cores.\n");
-    else md("- GPU serializes back-to-back dispatches.\n");
+    if (overlap > 5) md("- The GPU ran them concurrently across different cores.\n");
+    else md("- The GPU serialized them — no concurrent execution observed.\n");
     md("\n");
 
-    md("## Dynamic Cache (M3+ feature)\n");
-    md("Tests whether the GPU dynamically rebalances on-chip SRAM between registers and threadgroup memory.\n\n");
-    md("| Variant | TFLOPS |\n");
-    md("|---------|--------|\n");
-    md("| 256B TG + 16 acc | %.3f |\n", R.dynCacheReghi_TFLOPS);
-    md("| 8KB TG + 16 acc | %.3f |\n", R.dynCacheBoth_TFLOPS);
-    md("| 24KB TG + 16 acc | %.3f |\n", R.dynCacheTghi_TFLOPS);
+    md("## Dynamic Cache Partitioning (M3+ only)\n");
+    md("Tests whether the chip dynamically rebalances on-chip memory between registers and shared memory.\n\n");
+    md("| Configuration | Trillion ops/s |\n");
+    md("|---------------|----------------|\n");
+    md("| Low shared mem (256B) + 16 accumulators | %.3f |\n", R.dynCacheReghi_TFLOPS);
+    md("| Medium shared mem (8KB) + 16 accumulators | %.3f |\n", R.dynCacheBoth_TFLOPS);
+    md("| High shared mem (24KB) + 16 accumulators | %.3f |\n", R.dynCacheTghi_TFLOPS);
     if (R.dynCacheTghi_TFLOPS > 0 && R.dynCacheReghi_TFLOPS > 0) {
         double drop = (1.0 - R.dynCacheTghi_TFLOPS / R.dynCacheReghi_TFLOPS) * 100;
-        if (drop > 10) md("\n%.0f%% drop with high TG mem — fixed partitioning (M2 behavior).\n", drop);
-        else md("\nMinimal drop — dynamic caching is active (M3+ behavior).\n");
+        if (drop > 10) md("\n%.0f%% drop with high shared memory — chip uses fixed partitioning (M2 behavior).\n", drop);
+        else md("\nMinimal drop — chip dynamically rebalances (M3+ behavior).\n");
     }
     md("\n");
 
-    md("## BFloat16\n");
-    md("- **BF16 (half proxy):** ~%.0f GFLOPS\n", R.bf16_GFLOPS);
-    md("- **FP16:** ~%.0f GFLOPS\n", R.fp16_GFLOPS);
+    md("## BFloat16 Support\n");
+    md("- **BFloat16 (half-precision proxy):** ~%.0f GFLOPS\n", R.bf16_GFLOPS);
+    md("- **Float16:** ~%.0f GFLOPS\n", R.fp16_GFLOPS);
     if (R.fp16_GFLOPS > 0) {
         double ratio = R.bf16_GFLOPS / R.fp16_GFLOPS;
-        if (ratio > 1.3) md("- BF16 faster than FP16 — possible dedicated bf16 path.\n");
-        else md("- Same speed — no dedicated bf16 hardware, runs on fp16 pipe.\n");
+        if (ratio > 1.3) md("- BFloat16 is faster — chip may have a dedicated bfloat16 path.\n");
+        else md("- Same speed — no dedicated bfloat16 hardware, runs on the float16 pipe.\n");
     }
     md("\n");
 
-    md("## Atomic Variants\n");
-    md("- **Uint32 atomic (native):** ~%.1f Gops/s\n", R.uintAtomic_Gps);
-    md("- **Float32 atomic (CAS):** ~%.1f Gops/s\n", R.floatAtomic_Gps);
-    md("- **64-bit atomic (emulated):** ~%.1f Gops/s\n", R.atomic64_Gps);
+    md("## Atomic Operation Variants\n");
+    md("- **32-bit integer atomic (native hardware):** ~%.1f billion ops/s\n", R.uintAtomic_Gps);
+    md("- **32-bit float atomic (compare-and-swap loop):** ~%.1f billion ops/s\n", R.floatAtomic_Gps);
+    md("- **64-bit atomic (emulated with 32-bit):** ~%.1f billion ops/s\n", R.atomic64_Gps);
     if (R.uintAtomic_Gps > 0 && R.floatAtomic_Gps > 0) {
         double ratio = R.uintAtomic_Gps / R.floatAtomic_Gps;
-        if (ratio > 3) md("- Float32 atomic is %.0fx slower — software CAS loop, no native float atomics.\n", ratio);
-        else md("- Float32 atomic is close to uint32 — possible native float atomic support.\n");
+        if (ratio > 3) md("- Float atomic is %.0fx slower — no native float atomic support, falls back to software loop.\n", ratio);
+        else md("- Float atomic is close to integer — chip may have native float atomic support.\n");
     }
 }
 
