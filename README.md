@@ -13,9 +13,9 @@ Note, for this to work, make sure you:
 
 To get started, simply
 
-a. clone
-b. build
-c. run
+1. clone
+2. build
+3. run
 
 
 ```bash
