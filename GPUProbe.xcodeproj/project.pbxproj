@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		A10000010000000000000001 /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000001 /* main.mm */; };
-		A10000010000000000000002 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000002 /* Shaders.metal */; };
+		A10000010000000000000002 /* swep_.metal in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000002 /* swep_.metal */; };
 		A10000010000000000000003 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A20000010000000000000003 /* Metal.framework */; };
 		A10000010000000000000004 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A20000010000000000000004 /* Foundation.framework */; };
 		A10000010000000000000005 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A20000010000000000000005 /* QuartzCore.framework */; };
@@ -16,7 +16,7 @@
 
 /* Begin PBXFileReference section */
 		A20000010000000000000001 /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
-		A20000010000000000000002 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
+		A20000010000000000000002 /* swep_.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = swep_.metal; sourceTree = "<group>"; };
 		A20000010000000000000003 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		A20000010000000000000004 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		A20000010000000000000005 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
@@ -41,7 +41,7 @@
 			isa = PBXGroup;
 			children = (
 				A20000010000000000000001 /* main.mm */,
-				A20000010000000000000002 /* Shaders.metal */,
+				A20000010000000000000002 /* swep_.metal */,
 				A40000010000000000000002 /* Frameworks */,
 				A40000010000000000000003 /* Products */,
 			);
@@ -116,7 +116,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000010000000000000001 /* main.mm in Sources */,
-				A10000010000000000000002 /* Shaders.metal in Sources */,
+				A10000010000000000000002 /* swep_.metal in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
