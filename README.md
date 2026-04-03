@@ -19,7 +19,7 @@ c. run
 
 
 ```bash
-git clone <repo-url> && cd swep
+git clone https://github.com/Lazarus-931/swep.git && cd swep
 xcodebuild -project GPUProbe.xcodeproj -scheme GPUProbe -configuration Release build
 $(xcodebuild -project GPUProbe.xcodeproj -scheme GPUProbe -configuration Release -showBuildSettings 2>/dev/null | grep -m1 BUILT_PRODUCTS_DIR | awk '{print $3}')/GPUProbe
 ```
