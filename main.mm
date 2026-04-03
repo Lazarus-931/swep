@@ -1013,7 +1013,7 @@ int main(int argc, const char* argv[]) {
         if (!gLibrary) {
             // Try loading from metallib in current directory
             NSString* cwd = [[NSFileManager defaultManager] currentDirectoryPath];
-            NSString* libPath = [cwd stringByAppendingPathComponent:@"Shaders.metallib"];
+            NSString* libPath = [cwd stringByAppendingPathComponent:@"swep_.metallib"];
             NSURL* url = [NSURL fileURLWithPath:libPath];
             gLibrary = [gDevice newLibraryWithURL:url error:&err];
         }
