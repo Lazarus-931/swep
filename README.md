@@ -30,7 +30,8 @@ Results print to stdout and a report is saved to `runs/<chip>.md` based on your 
 GEMM kernels tuned per chip. Each `gemm_N/` folder targets a specific matrix size range with 3+ configs.
 
 ```
-gemm/m4/gemm_1/    M>=256, N>=256, K>64 — 3 configs (max reuse, double-buffered, write-optimized)
+gemm/m4/gemm_1/    M>=256, N>=256, K>64 — tile shape (max reuse, double-buffered, write-optimized)
+gemm/m4/gemm_2/    K-block depth sweep — how deep to hide M4's 300ns loaded latency
 ```
 
 Run any of them:
