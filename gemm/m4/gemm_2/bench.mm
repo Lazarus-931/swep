@@ -46,8 +46,8 @@ int main() {
 
         Kernel kernels[] = {
             {"k16",  "config_a.metal", "gemm_k16",  32, 128},
-            {"k64",  "config_b.metal", "gemm_k64",  32, 128},
-            {"k128", "config_c.metal", "gemm_k128", 32, 128},
+            {"k32",  "config_b.metal", "gemm_k32",  32, 128},
+            {"k48",  "config_c.metal", "gemm_k48",  32, 128},
         };
 
         struct Shape { uint32_t M, N, K; };
