@@ -27,28 +27,44 @@ kernel void gemm_config_b(
     uint sr = (simd_id / 2) * 16;
     uint sc = (simd_id % 2) * 32;
 
-    auto load_tile = [&](uint kb, int slot) {
-        for (uint i = lid; i < 32 * 32; i += 256) {
-            uint r = i / 32, c = i % 32;
-            uint gr = tileRow + r, gc = kb + c;
-            As[slot][r][c] = (gr < M && gc < K) ? A[gr * K + gc] : 0;
-        }
-        for (uint i = lid; i < 32 * 64; i += 256) {
-            uint r = i / 64, c = i % 64;
-            uint gr = kb + r, gc = tileCol + c;
-            Bs[slot][r][c] = (gr < K && gc < N) ? B[gr * N + gc] : 0;
-        }
-    };
+    for (uint i = lid; i < 32 * 32; i += 256) {
+        uint r = i / 32, c = i % 32;
+        uint gr = tileRow + r, gc = c;
+        As[0][r][c] = (gr < M && gc < K) ? A[gr * K + gc] : 0;
+    }
+    for (uint i = lid; i < 32 * 64; i += 256) {
+        uint r = i / 64, c = i % 64;
+        uint gr = r, gc = tileCol + c;
+        Bs[0][r][c] = (gr < K && gc < N) ? B[gr * N + gc] : 0;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
 
-    auto compute_tile = [&](int slot) {
+    for (uint kb = 0; kb < K; kb += 32) {
+        int cur = (kb / 32) & 1;
+        int nxt = 1 - cur;
+
+        if (kb + 32 < K) {
+            for (uint i = lid; i < 32 * 32; i += 256) {
+                uint r = i / 32, c = i % 32;
+                uint gr = tileRow + r, gc = kb + 32 + c;
+                As[nxt][r][c] = (gr < M && gc < K) ? A[gr * K + gc] : 0;
+            }
+            for (uint i = lid; i < 32 * 64; i += 256) {
+                uint r = i / 64, c = i % 64;
+                uint gr = kb + 32 + r, gc = tileCol + c;
+                Bs[nxt][r][c] = (gr < K && gc < N) ? B[gr * N + gc] : 0;
+            }
+        }
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+
         for (uint kk = 0; kk < 32; kk += 8) {
             simdgroup_float8x8 a0, a1, b0, b1, b2, b3;
-            simdgroup_load(a0, &As[slot][sr][kk], 33);
-            simdgroup_load(a1, &As[slot][sr + 8][kk], 33);
-            simdgroup_load(b0, &Bs[slot][kk][sc], 65);
-            simdgroup_load(b1, &Bs[slot][kk][sc + 8], 65);
-            simdgroup_load(b2, &Bs[slot][kk][sc + 16], 65);
-            simdgroup_load(b3, &Bs[slot][kk][sc + 24], 65);
+            simdgroup_load(a0, &As[cur][sr][kk], 33);
+            simdgroup_load(a1, &As[cur][sr + 8][kk], 33);
+            simdgroup_load(b0, &Bs[cur][kk][sc], 65);
+            simdgroup_load(b1, &Bs[cur][kk][sc + 8], 65);
+            simdgroup_load(b2, &Bs[cur][kk][sc + 16], 65);
+            simdgroup_load(b3, &Bs[cur][kk][sc + 24], 65);
 
             simdgroup_multiply_accumulate(acc[0],  a0, b0, acc[0]);
             simdgroup_multiply_accumulate(acc[1],  a0, b1, acc[1]);
@@ -59,17 +75,6 @@ kernel void gemm_config_b(
             simdgroup_multiply_accumulate(acc[6],  a1, b2, acc[6]);
             simdgroup_multiply_accumulate(acc[7],  a1, b3, acc[7]);
         }
-    };
-
-    load_tile(0, 0);
-    threadgroup_barrier(mem_flags::mem_threadgroup);
-
-    for (uint kb = 0; kb < K; kb += 32) {
-        int cur = (kb / 32) & 1;
-        int nxt = 1 - cur;
-        if (kb + 32 < K) load_tile(kb + 32, nxt);
-        threadgroup_barrier(mem_flags::mem_threadgroup);
-        compute_tile(cur);
         threadgroup_barrier(mem_flags::mem_threadgroup);
     }
 
