@@ -32,6 +32,7 @@ GEMM kernels tuned per chip. Each `gemm_N/` folder targets a specific matrix siz
 ```
 gemm/m4/gemm_1/    M>=256, N>=256, K>64 — tile shape (max reuse, double-buffered, write-optimized)
 gemm/m4/gemm_2/    K-block depth sweep — how deep to hide M4's 300ns loaded latency
+gemm/m4/gemm_3/    Core saturation — threadgroup size and tile shape vs core utilization
 ```
 
 Run any of them:
