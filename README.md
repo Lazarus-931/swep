@@ -25,6 +25,19 @@ make run
 
 Results print to stdout and a report is saved to `runs/<chip>.md` based on your device.
 
+## gemm/
+
+GEMM kernels tuned per chip. Each `gemm_N/` folder targets a specific matrix size range with 3+ configs.
+
+```
+gemm/m4/gemm_1/    M>=256, N>=256, K>64 — 3 configs (max reuse, double-buffered, write-optimized)
+```
+
+Run any of them:
+```bash
+cd gemm/m4/gemm_1 && make run
+```
+
 ## Findings
 
 M4 vs M2, side by side from real runs.

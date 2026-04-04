@@ -1,0 +1,83 @@
+// For M>=256, N>=256, K>64 on M4
+// Config B: 32x64 tile, K-block 32, 16 accumulators, double-buffered
+
+#include <metal_stdlib>
+using namespace metal;
+
+kernel void gemm_config_b(
+    device const float* A [[buffer(0)]],
+    device const float* B [[buffer(1)]],
+    device float* C       [[buffer(2)]],
+    constant uint& M [[buffer(3)]],
+    constant uint& N [[buffer(4)]],
+    constant uint& K [[buffer(5)]],
+    uint2 gid [[threadgroup_position_in_grid]],
+    uint lid [[thread_index_in_threadgroup]],
+    uint simd_id [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float As[2][32][33];
+    threadgroup float Bs[2][32][65];
+
+    uint tileRow = gid.y * 32;
+    uint tileCol = gid.x * 64;
+
+    simdgroup_float8x8 acc[16];
+    for (int i = 0; i < 16; i++) acc[i] = simdgroup_float8x8(0);
+
+    uint sr = (simd_id / 2) * 16;
+    uint sc = (simd_id % 2) * 32;
+
+    auto load_tile = [&](uint kb, int slot) {
+        for (uint i = lid; i < 32 * 32; i += 256) {
+            uint r = i / 32, c = i % 32;
+            uint gr = tileRow + r, gc = kb + c;
+            As[slot][r][c] = (gr < M && gc < K) ? A[gr * K + gc] : 0;
+        }
+        for (uint i = lid; i < 32 * 64; i += 256) {
+            uint r = i / 64, c = i % 64;
+            uint gr = kb + r, gc = tileCol + c;
+            Bs[slot][r][c] = (gr < K && gc < N) ? B[gr * N + gc] : 0;
+        }
+    };
+
+    auto compute_tile = [&](int slot) {
+        for (uint kk = 0; kk < 32; kk += 8) {
+            simdgroup_float8x8 a0, a1, b0, b1, b2, b3;
+            simdgroup_load(a0, &As[slot][sr][kk], 33);
+            simdgroup_load(a1, &As[slot][sr + 8][kk], 33);
+            simdgroup_load(b0, &Bs[slot][kk][sc], 65);
+            simdgroup_load(b1, &Bs[slot][kk][sc + 8], 65);
+            simdgroup_load(b2, &Bs[slot][kk][sc + 16], 65);
+            simdgroup_load(b3, &Bs[slot][kk][sc + 24], 65);
+
+            simdgroup_multiply_accumulate(acc[0],  a0, b0, acc[0]);
+            simdgroup_multiply_accumulate(acc[1],  a0, b1, acc[1]);
+            simdgroup_multiply_accumulate(acc[2],  a0, b2, acc[2]);
+            simdgroup_multiply_accumulate(acc[3],  a0, b3, acc[3]);
+            simdgroup_multiply_accumulate(acc[4],  a1, b0, acc[4]);
+            simdgroup_multiply_accumulate(acc[5],  a1, b1, acc[5]);
+            simdgroup_multiply_accumulate(acc[6],  a1, b2, acc[6]);
+            simdgroup_multiply_accumulate(acc[7],  a1, b3, acc[7]);
+        }
+    };
+
+    load_tile(0, 0);
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+
+    for (uint kb = 0; kb < K; kb += 32) {
+        int cur = (kb / 32) & 1;
+        int nxt = 1 - cur;
+        if (kb + 32 < K) load_tile(kb + 32, nxt);
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+        compute_tile(cur);
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+    }
+
+    for (int ar = 0; ar < 2; ar++)
+        for (int ac = 0; ac < 4; ac++) {
+            uint r = tileRow + sr + ar * 8;
+            uint c = tileCol + sc + ac * 8;
+            if (r < M && c < N)
+                simdgroup_store(acc[ar * 4 + ac], C + r * N + c, N);
+        }
+}
